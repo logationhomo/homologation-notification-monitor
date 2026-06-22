@@ -46,13 +46,29 @@ jobs:
         run: |
           git config user.name  "monitor-bot"
           git config user.email "monitor-bot@users.noreply.github.com"
+          # The monitor only writes these files; rebasing onto remote keeps any
+          # other changes (e.g. your manual edits) instead of clobbering them.
+          git config pull.rebase true
+
           git add state/state.json docs/report.html docs/report_data.json
           if git diff --cached --quiet; then
             echo "No changes to commit."
-          else
-            git commit -m "Update notifications $(date -u +'%Y-%m-%d %H:%M UTC')"
-            git push
+            exit 0
           fi
+          git commit -m "Update notifications $(date -u +'%Y-%m-%d %H:%M UTC')"
+
+          # Push with rebase-and-retry: if remote moved between checkout and now
+          # (manual edits, overlapping runs), pull --rebase and try again.
+          for attempt in 1 2 3; do
+            if git push; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt); rebasing onto remote and retrying..."
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+          done
+          echo "::error::Failed to push after 3 attempts."
+          exit 1
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
