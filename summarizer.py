@@ -20,13 +20,42 @@ import json
 import urllib.request
 import urllib.error
 
-# Defaults chosen for the free tier (Flash family). Override via env if Google
-# renames models. As of mid-2026 the free tier is Flash / Flash-Lite only.
-# NOTE: use `or` not just .get() default — an env var set to "" (e.g. an empty
-# GitHub Actions variable) is present-but-blank, which would otherwise produce
-# a URL like .../models/:generateContent and a 404. `or` falls back on "".
-DEFAULT_MODEL = os.environ.get("GEMINI_MODEL") or "gemini-2.5-flash"
+# Model fallback chain. We try these in order; on a retryable/overload error
+# (503, 429, 5xx) or a model-not-found (404), we advance to the next one.
+#
+# Configure via env:
+#   GEMINI_MODELS  comma-separated list, highest priority first  (preferred)
+#   GEMINI_MODEL   single model; used as the first entry if GEMINI_MODELS unset
+#
+# Defaults are free-tier-capable, non-deprecated models (verified mid-2026).
+# Order: a solid default, then a higher-RPD-limit lite model, then a
+# next-generation Flash as a forward-looking backstop.
+# IMPORTANT: gemini-2.0-flash / 2.0-flash-lite were SHUT DOWN June 1, 2026 —
+# do not add them back. gemini-2.5-flash is slated to retire Oct 16, 2026, so
+# revisit this list around then (or just set GEMINI_MODELS to override).
+_DEFAULT_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3-flash"]
+
+
+def _model_chain():
+    """Resolve the ordered list of models to try, from env or defaults."""
+    raw = os.environ.get("GEMINI_MODELS") or ""
+    models = [m.strip() for m in raw.split(",") if m.strip()]
+    if models:
+        return models
+    single = os.environ.get("GEMINI_MODEL") or ""
+    single = single.strip()
+    if single:
+        # Keep the user's choice first, then the rest of the defaults as backups.
+        return [single] + [m for m in _DEFAULT_MODELS if m != single]
+    return list(_DEFAULT_MODELS)
+
+
+# First model in the chain — used for the startup log line and self-test.
+DEFAULT_MODEL = _model_chain()[0]
 GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
+
+# HTTP codes where trying a DIFFERENT model may help (overload/transient/missing).
+_RETRYABLE_CODES = {429, 500, 502, 503, 504, 404}
 
 # Conservative spacing for ~10 RPM free tier: ~1 request / 6.5s.
 _MIN_INTERVAL_S = 6.5
@@ -46,15 +75,52 @@ def is_enabled():
 def summarize(entry_text, _key=None, _model=None):
     """
     Return a one-line relevance note for the given text, or "" if disabled
-    or anything goes wrong. Never raises.
+    or all models fail. Never raises.
+
+    Walks the model fallback chain: on a retryable error (503 overload, 429
+    rate limit, other 5xx, or 404 model-not-found) it advances to the next
+    model. Stops and returns on the first success, or on a non-retryable error
+    (e.g. 400 bad request, 403 auth) where switching models would not help.
     """
     api_key = _key if _key is not None else os.environ.get("GEMINI_API_KEY")
     if not api_key:
         return ""
 
-    model = _model or DEFAULT_MODEL
-    url = f"{GEMINI_BASE}/{model}:generateContent"
+    # If a specific model is forced (tests), try only that one; otherwise chain.
+    models = [_model] if _model else _model_chain()
 
+    last_was_retryable = False
+    for i, model in enumerate(models):
+        text, retryable = _call_once(entry_text, api_key, model)
+        if text:
+            if i > 0:
+                _log(f"succeeded with fallback model '{model}' "
+                     f"(after {i} model(s) failed)")
+            return text
+        if not retryable:
+            # A different model won't fix this (bad key, malformed request, etc.)
+            return ""
+        last_was_retryable = True
+        if i + 1 < len(models):
+            _log(f"model '{model}' unavailable; trying fallback "
+                 f"'{models[i + 1]}'")
+    if last_was_retryable:
+        _log("all models in the fallback chain were unavailable; "
+             "skipping summary for this entry")
+    return ""
+
+
+def _call_once(entry_text, api_key, model):
+    """
+    One attempt against one model. Includes a single in-model retry for 429
+    (rate limit) since that often clears after a short wait.
+
+    Returns (text, retryable):
+      text       the summary string, or "" on failure
+      retryable  True if a DIFFERENT model might succeed (so the caller should
+                 advance the chain); False for terminal errors.
+    """
+    url = f"{GEMINI_BASE}/{model}:generateContent"
     body = {
         "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
         "contents": [{"role": "user", "parts": [{"text": entry_text}]}],
@@ -62,46 +128,49 @@ def summarize(entry_text, _key=None, _model=None):
     }
     data = json.dumps(body).encode("utf-8")
 
-    # Throttle to respect free-tier RPM.
-    elapsed = time.time() - _last_call_ts[0]
-    if elapsed < _MIN_INTERVAL_S:
-        time.sleep(_MIN_INTERVAL_S - elapsed)
+    for attempt in range(2):  # one in-model retry, used only for 429
+        # Throttle to respect free-tier RPM (shared across all calls).
+        elapsed = time.time() - _last_call_ts[0]
+        if elapsed < _MIN_INTERVAL_S:
+            time.sleep(_MIN_INTERVAL_S - elapsed)
 
-    req = urllib.request.Request(
-        url,
-        data=data,
-        headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
-        method="POST",
-    )
-
-    for attempt in range(2):  # one retry on transient/rate-limit errors
+        req = urllib.request.Request(
+            url, data=data,
+            headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
+            method="POST",
+        )
         try:
             with urllib.request.urlopen(req, timeout=30) as resp:
                 payload = json.loads(resp.read().decode("utf-8"))
             _last_call_ts[0] = time.time()
             text = _extract_text(payload)
             if not text:
-                # 200 OK but no usable text — log why (e.g. safety block, empty).
                 _log(f"empty response from model '{model}': "
-                     f"{json.dumps(payload)[:400]}")
-            return text
+                     f"{json.dumps(payload)[:300]}")
+                # 200 but no text (e.g. safety block) — a different model might
+                # behave differently, so treat as retryable.
+                return "", True
+            return text, False
         except urllib.error.HTTPError as e:
             _last_call_ts[0] = time.time()
             detail = ""
             try:
-                detail = e.read().decode("utf-8")[:400]
+                detail = e.read().decode("utf-8")[:300]
             except Exception:
                 pass
             _log(f"HTTP {e.code} from model '{model}': {detail}")
             if e.code == 429 and attempt == 0:
-                time.sleep(15)  # rate limited: brief backoff then one retry
+                time.sleep(15)   # brief backoff, then one same-model retry
                 continue
-            return ""  # any other HTTP error -> skip summary for this entry
+            return "", (e.code in _RETRYABLE_CODES)
         except Exception as e:
             _last_call_ts[0] = time.time()
             _log(f"request failed for model '{model}': {type(e).__name__}: {e}")
-            return ""
-    return ""
+            # Network blips etc. — another model on the same network likely
+            # won't help, but it's cheap to let the chain try once. Treat as
+            # retryable so a transient issue doesn't kill the summary outright.
+            return "", True
+    return "", True
 
 
 def _log(msg):
