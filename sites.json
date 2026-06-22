@@ -1,0 +1,18 @@
+{
+  "sites": [
+    {
+      "id": "eping_gcc_43020",
+      "name": "ePing — GCC vehicles (ICS 43.020)",
+      "description": "TBT notifications for GCC + Morocco, free text 43.020 (road vehicles in general).",
+      "fetcher": "eping_api",
+      "track_limit": 30,
+      "params": {
+        "domainIds": "1",
+        "countryIds": ["C784", "C682", "C512", "C414", "C048", "C887", "C634", "C504"],
+        "freeText": "43.020",
+        "sortBy": "distributionDate",
+        "sortDirection": "desc"
+      }
+    }
+  ]
+}

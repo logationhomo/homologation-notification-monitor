@@ -1,0 +1,5 @@
+requests>=2.31
+Jinja2>=3.1
+# Playwright is optional — only needed for JS-rendered sites without a JSON API.
+# ePing uses its JSON API, so this stays commented. Uncomment to enable.
+# playwright>=1.45
