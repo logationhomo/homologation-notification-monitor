@@ -22,6 +22,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # full history so push-rebase can integrate remote changes
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -36,11 +38,70 @@ jobs:
       # - name: Install Playwright browser
       #   run: python -m playwright install --with-deps chromium
 
+      - name: Gemini diagnostic (non-fatal)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+        continue-on-error: true        # never blocks the run; just prints info
+        run: |
+          mkdir -p _logs
+          # tee: print to the live log AND save to a file we upload as an artifact.
+          {
+            MODEL="${GEMINI_MODEL:-gemini-2.5-flash}"
+            echo "=== Is the key present? (length only, not the value) ==="
+            echo "GEMINI_API_KEY length: ${#GEMINI_API_KEY}"
+            if [ -z "$GEMINI_API_KEY" ]; then
+              echo "KEY IS EMPTY — the secret is not reaching this job."
+            fi
+            echo "=== Raw curl call to model: $MODEL (this WILL show in AI Studio if it leaves the runner) ==="
+            curl -sS -w "\nHTTP_STATUS:%{http_code}\n" \
+              "https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent" \
+              -H "Content-Type: application/json" \
+              -H "x-goog-api-key: ${GEMINI_API_KEY}" \
+              -d '{"contents":[{"parts":[{"text":"Reply with the single word OK"}]}]}' || true
+            echo ""
+            echo "=== Which models can this key use? (Python helper) ==="
+            python summarizer.py --list || true
+            echo "=== Python self-test ==="
+            python summarizer.py || true
+          } 2>&1 | tee _logs/gemini_diagnostic.txt
+
       - name: Run monitor
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}   # optional; safe if unset
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}           # optional override
-        run: python monitor.py
+        run: |
+          mkdir -p _logs
+          python monitor.py 2>&1 | tee _logs/monitor_run.txt
+
+      - name: Write run summary
+        if: always()
+        run: |
+          {
+            echo "## Notification Monitor — run summary"
+            echo ""
+            echo "### Per-site result"
+            echo '```'
+            grep -E "^\s*\[" _logs/monitor_run.txt || echo "(no per-site lines found)"
+            echo '```'
+            echo "### Gemini diagnostic (key/model/HTTP status)"
+            echo '```'
+            grep -E "length:|HTTP_STATUS|OK:|FAILED:|\[summarizer\]" _logs/gemini_diagnostic.txt 2>/dev/null || echo "(no diagnostic captured)"
+            echo '```'
+            echo "_Full logs and report are in the **run-diagnostics** artifact on this page._"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload diagnostics artifact (always)
+        if: always()                   # upload even if a prior step failed
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-diagnostics
+          retention-days: 14
+          path: |
+            _logs/
+            docs/report.html
+            docs/report_data.json
+            state/state.json
 
       - name: Commit updated state and report
         run: |
