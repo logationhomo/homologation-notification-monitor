@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-22 13:01 UTC",
+  "generated_at": "2026-06-22 13:09 UTC",
   "total_new": 2,
   "sites": [
     {
@@ -23,7 +23,7 @@
           },
           "link": "https://docs.wto.org/imrd/directdoc.asp?DDFDocuments/T/G/TBTN26/ARE703.docx",
           "extra_link": "https://members.wto.org/crnattachments/2026/TBT/ARE/26_02883_00_e.pdf",
-          "llm_note": ""
+          "llm_note": "This GCC technical regulation"
         },
         {
           "uid": "113918",
@@ -40,7 +40,7 @@
           },
           "link": "https://docs.wto.org/imrd/directdoc.asp?DDFDocuments/T/G/TBTN26/ARE703.docx",
           "extra_link": "https://members.wto.org/crnattachments/2026/TBT/ARE/26_02883_00_e.pdf",
-          "llm_note": "Ku"
+          "llm_note": "This GCC technical regulation"
         }
       ]
     }
