@@ -146,6 +146,9 @@ def main():
     ap.add_argument("--report", default=DEFAULT_REPORT)
     ap.add_argument("--no-llm", action="store_true",
                     help="Disable Gemini notes even if GEMINI_API_KEY is set")
+    ap.add_argument("--force-llm-test", action="store_true",
+                    help="Summarize the first fetched entry per site regardless "
+                         "of whether it is new — proves the Gemini path works.")
     args = ap.parse_args()
 
     config = load_json(args.sites, {"sites": []})
@@ -157,6 +160,28 @@ def main():
     if use_llm:
         print(f"  Using Gemini model: {summarizer.DEFAULT_MODEL} "
               f"(override with GEMINI_MODEL)")
+
+    # On-demand end-to-end Gemini check: fetch one entry per site and summarize
+    # it directly, bypassing the new-entry gate. This makes a REAL API call so
+    # it will appear in AI Studio, and prints the result or the failure reason.
+    if args.force_llm_test:
+        if not summarizer.is_enabled():
+            print("force-llm-test: GEMINI_API_KEY not set; nothing to test.")
+            sys.exit(1)
+        import fetchers as _f, extractors as _e
+        for site in config["sites"]:
+            try:
+                raw = _f.get_fetcher(site["fetcher"])(site)
+                entries = _e.get_extractor(site["fetcher"])(raw, site)
+                if not entries:
+                    print(f"  [{site['id']}] no entries fetched to test.")
+                    continue
+                note = summarizer.summarize(entries[0]["llm_input"])
+                status = f"note={note!r}" if note else "EMPTY (see [summarizer] log above)"
+                print(f"  [{site['id']}] forced summary -> {status}")
+            except Exception as ex:
+                print(f"  [{site['id']}] force-llm-test error: {ex}", file=sys.stderr)
+        sys.exit(0)
 
     site_reports = []
     new_state = dict(prior_state)
