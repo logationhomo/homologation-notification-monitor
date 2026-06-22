@@ -1,0 +1,71 @@
+name: Notification Monitor
+
+# Runs daily and on manual trigger. Commits updated state + report back to the
+# repo, then publishes docs/ to GitHub Pages.
+on:
+  schedule:
+    - cron: "0 6 * * *"      # 06:00 UTC daily. Adjust as needed.
+  workflow_dispatch: {}        # lets you run it on demand from the Actions tab
+
+permissions:
+  contents: write              # to commit state.json + report back
+  pages: write                 # to deploy to GitHub Pages
+  id-token: write              # required by the Pages deploy action
+
+concurrency:
+  group: monitor
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Playwright is only needed if/when a site uses the playwright_table
+      # fetcher. ePing does not. Uncomment the next two lines when you add one.
+      # - name: Install Playwright browser
+      #   run: python -m playwright install --with-deps chromium
+
+      - name: Run monitor
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}   # optional; safe if unset
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}           # optional override
+        run: python monitor.py
+
+      - name: Commit updated state and report
+        run: |
+          git config user.name  "monitor-bot"
+          git config user.email "monitor-bot@users.noreply.github.com"
+          git add state/state.json docs/report.html docs/report_data.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Update notifications $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push
+          fi
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy-pages:
+    needs: run
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
