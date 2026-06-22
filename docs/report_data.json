@@ -1,1 +1,13 @@
-{}
+{
+  "generated_at": "2026-06-22 11:45 UTC",
+  "total_new": 0,
+  "sites": [
+    {
+      "id": "eping_gcc_43020",
+      "name": "ePing — GCC vehicles (ICS 43.020)",
+      "is_baseline": true,
+      "tracked_count": 30,
+      "new_entries": []
+    }
+  ]
+}
