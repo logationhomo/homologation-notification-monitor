@@ -22,7 +22,10 @@ import urllib.error
 
 # Defaults chosen for the free tier (Flash family). Override via env if Google
 # renames models. As of mid-2026 the free tier is Flash / Flash-Lite only.
-DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+# NOTE: use `or` not just .get() default — an env var set to "" (e.g. an empty
+# GitHub Actions variable) is present-but-blank, which would otherwise produce
+# a URL like .../models/:generateContent and a 404. `or` falls back on "".
+DEFAULT_MODEL = os.environ.get("GEMINI_MODEL") or "gemini-2.5-flash"
 GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
 # Conservative spacing for ~10 RPM free tier: ~1 request / 6.5s.
