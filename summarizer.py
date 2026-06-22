@@ -62,9 +62,18 @@ _MIN_INTERVAL_S = 6.5
 _last_call_ts = [0.0]  # mutable holder so the throttle persists across calls
 
 SYSTEM_PROMPT = (
-    "You are a trade-compliance analyst. Given one WTO TBT/SPS notification, "
-    "write ONE concise sentence (max 30 words) stating what it concerns and "
-    "who/what it affects. No preamble, no markdown, just the sentence."
+    "You are an automotive regulatory-affairs analyst. You will be given one "
+    "WTO TBT/SPS notification (title, notifying member, products, objectives, "
+    "and a Description of the regulatory change).\n\n"
+    "Write a short relevance note of 2-3 sentences, based primarily on the "
+    "Description, covering:\n"
+    "1. What the regulatory change actually requires or changes.\n"
+    "2. How it is relevant to the automobile industry (e.g. which vehicles, "
+    "components, or processes it affects).\n"
+    "3. How significant the change is for manufacturers/importers — flag it as "
+    "high, moderate, or low impact and say why in a few words.\n\n"
+    "Be concrete and specific. Plain text only: no markdown, no headings, no "
+    "bullet points, no preamble — just the note itself."
 )
 
 
@@ -124,7 +133,19 @@ def _call_once(entry_text, api_key, model):
     body = {
         "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
         "contents": [{"role": "user", "parts": [{"text": entry_text}]}],
-        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 80},
+        "generationConfig": {
+            "temperature": 0.2,
+            # Generous budget: Gemini 2.5/3 are "thinking" models that spend
+            # output tokens on internal reasoning BEFORE the visible answer.
+            # A small cap (e.g. 80) gets consumed by reasoning and truncates the
+            # reply mid-sentence. 800 leaves ample room for a 2-3 sentence note.
+            "maxOutputTokens": 800,
+            # Disable thinking for this simple summarisation task: faster,
+            # cheaper, and no tokens wasted on reasoning. Recognised by Gemini
+            # 2.5 Flash / Flash-Lite; ignored harmlessly by models that don't
+            # support it (the larger token budget covers those anyway).
+            "thinkingConfig": {"thinkingBudget": 0},
+        },
     }
     data = json.dumps(body).encode("utf-8")
 
@@ -201,9 +222,18 @@ def selftest():
 
 
 def _extract_text(payload):
-    """Pull the first text part out of a Gemini generateContent response."""
+    """Pull the first text part out of a Gemini generateContent response.
+    Also surfaces a truncation warning if the model hit the output cap."""
     try:
-        parts = payload["candidates"][0]["content"]["parts"]
+        cand = payload["candidates"][0]
+        finish = cand.get("finishReason", "")
+        if finish == "MAX_TOKENS":
+            # The note was cut off by the token budget. With thinking disabled
+            # and an 800-token cap this should not happen for a 2-3 sentence
+            # note, but log it so it's obvious if a future change reintroduces it.
+            _log("response hit MAX_TOKENS — output truncated; consider raising "
+                 "maxOutputTokens or shortening the prompt.")
+        parts = cand["content"]["parts"]
         text = " ".join(p.get("text", "") for p in parts).strip()
         return " ".join(text.split())  # collapse whitespace
     except (KeyError, IndexError, TypeError):
