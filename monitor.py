@@ -154,6 +154,9 @@ def main():
 
     print(f"Loaded {len(config['sites'])} site(s). "
           f"LLM notes: {'ON' if use_llm else 'OFF'}")
+    if use_llm:
+        print(f"  Using Gemini model: {summarizer.DEFAULT_MODEL} "
+              f"(override with GEMINI_MODEL)")
 
     site_reports = []
     new_state = dict(prior_state)
