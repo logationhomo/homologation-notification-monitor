@@ -14,6 +14,7 @@ Model + endpoint are read from env so they can be updated without code changes
 """
 
 import os
+import sys
 import time
 import json
 import urllib.request
@@ -75,17 +76,56 @@ def summarize(entry_text, _key=None, _model=None):
             with urllib.request.urlopen(req, timeout=30) as resp:
                 payload = json.loads(resp.read().decode("utf-8"))
             _last_call_ts[0] = time.time()
-            return _extract_text(payload)
+            text = _extract_text(payload)
+            if not text:
+                # 200 OK but no usable text — log why (e.g. safety block, empty).
+                _log(f"empty response from model '{model}': "
+                     f"{json.dumps(payload)[:400]}")
+            return text
         except urllib.error.HTTPError as e:
             _last_call_ts[0] = time.time()
+            detail = ""
+            try:
+                detail = e.read().decode("utf-8")[:400]
+            except Exception:
+                pass
+            _log(f"HTTP {e.code} from model '{model}': {detail}")
             if e.code == 429 and attempt == 0:
                 time.sleep(15)  # rate limited: brief backoff then one retry
                 continue
             return ""  # any other HTTP error -> skip summary for this entry
-        except Exception:
+        except Exception as e:
             _last_call_ts[0] = time.time()
+            _log(f"request failed for model '{model}': {type(e).__name__}: {e}")
             return ""
     return ""
+
+
+def _log(msg):
+    """Diagnostics go to stderr so they appear in GitHub Actions logs but never
+    pollute the report. Silent only when there's genuinely nothing to say."""
+    print(f"[summarizer] {msg}", file=sys.stderr)
+
+
+def selftest():
+    """
+    One-shot connectivity/credential check. Returns (ok, message).
+    Run via:  python summarizer.py
+    Useful as a workflow step to see exactly what's wrong with Gemini.
+    """
+    key = os.environ.get("GEMINI_API_KEY")
+    if not key:
+        return False, "GEMINI_API_KEY is not set in the environment."
+    model = DEFAULT_MODEL
+    out = summarize("Say the single word: OK", _key=key, _model=model)
+    if out:
+        return True, f"Gemini reachable via model '{model}'. Sample reply: {out!r}"
+    return False, (
+        f"Gemini call to model '{model}' returned no text. "
+        f"See the [summarizer] log line above for the HTTP code / reason. "
+        f"Common causes: wrong/renamed model (404), quota or region (429/403), "
+        f"or an invalid key (400/403)."
+    )
 
 
 def _extract_text(payload):
@@ -96,3 +136,49 @@ def _extract_text(payload):
         return " ".join(text.split())  # collapse whitespace
     except (KeyError, IndexError, TypeError):
         return ""
+
+
+def list_models():
+    """
+    Ask the API which models THIS key can actually use, and which support
+    generateContent. This is the definitive answer to 'which model should I set'.
+    Run via:  python summarizer.py --list
+    """
+    key = os.environ.get("GEMINI_API_KEY")
+    if not key:
+        print("[summarizer] GEMINI_API_KEY is not set.", file=sys.stderr)
+        return
+    url = "https://generativelanguage.googleapis.com/v1beta/models"
+    req = urllib.request.Request(url, headers={"x-goog-api-key": key})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        body = ""
+        try:
+            body = e.read().decode("utf-8")[:400]
+        except Exception:
+            pass
+        print(f"[summarizer] models list failed: HTTP {e.code}: {body}",
+              file=sys.stderr)
+        return
+    except Exception as e:
+        print(f"[summarizer] models list failed: {type(e).__name__}: {e}",
+              file=sys.stderr)
+        return
+
+    print("Models available to your key that support generateContent:")
+    for m in data.get("models", []):
+        methods = m.get("supportedGenerationMethods", [])
+        if "generateContent" in methods:
+            name = m.get("name", "").replace("models/", "")
+            print(f"  - {name}")
+
+
+if __name__ == "__main__":
+    if "--list" in sys.argv:
+        list_models()
+    else:
+        ok, msg = selftest()
+        print(("OK: " if ok else "FAILED: ") + msg)
+        sys.exit(0 if ok else 1)
