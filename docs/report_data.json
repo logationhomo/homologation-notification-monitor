@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-06-22 12:07 UTC",
-  "total_new": 1,
+  "generated_at": "2026-06-22 12:23 UTC",
+  "total_new": 2,
   "sites": [
     {
       "id": "eping_gcc_43020",
@@ -14,6 +14,23 @@
           "summary": "GCC Technical Regulations for Vehicles - \"eCall\" Emergency calls Technical Requirements, This regulation is concerned with the technical requirements for the emergency call system (eCall) for all passenger vehicles not more than eight seats in addition to the driver's (regardless of the vehicle's weight) and for light-duty vehicles with a weight not exceeding 3500 kg, which are imported or manufactured for registration and licensing in the GCC countries This standard exempted vehicle produced in small series.",
           "meta": {
             "Notifying member": "Bahrain, Kingdom of",
+            "Area": "TBT",
+            "Distribution date": "2026-06-02",
+            "Comment deadline": "2026-08-01",
+            "Document symbol(s)": "G/TBT/N/ARE/703, G/TBT/N/BHR/780, G/TBT/N/KWT/764, G/TBT/N/OMN/603, G/TBT/N/QAT/754, G/TBT/N/SAU/1437, G/TBT/N/YEM/351",
+            "Products": "Road vehicles in general (ICS code(s): 43.020)",
+            "Objectives": "Protection of human health or safety (TBT), Quality requirements (TBT), Harmonization (TBT)"
+          },
+          "link": "https://docs.wto.org/imrd/directdoc.asp?DDFDocuments/T/G/TBTN26/ARE703.docx",
+          "extra_link": "https://members.wto.org/crnattachments/2026/TBT/ARE/26_02883_00_e.pdf",
+          "llm_note": ""
+        },
+        {
+          "uid": "113918",
+          "title": "GCC Technical regulation for \"Vehicles - \"eCall\" Emergency calls Technical Requirements\"",
+          "summary": "GCC Technical Regulations for Vehicles - \"eCall\" Emergency calls Technical Requirements, This regulation is concerned with the technical requirements for the emergency call system (eCall) for all passenger vehicles not more than eight seats in addition to the driver's (regardless of the vehicle's weight) and for light-duty vehicles with a weight not exceeding 3500 kg, which are imported or manufactured for registration and licensing in the GCC countries This standard exempted vehicle produced in small series.",
+          "meta": {
+            "Notifying member": "Kuwait, the State of",
             "Area": "TBT",
             "Distribution date": "2026-06-02",
             "Comment deadline": "2026-08-01",
