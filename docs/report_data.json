@@ -1,48 +1,13 @@
 {
-  "generated_at": "2026-06-22 13:29 UTC",
-  "total_new": 2,
+  "generated_at": "2026-06-23 12:54 UTC",
+  "total_new": 0,
   "sites": [
     {
       "id": "eping_gcc_43020",
       "name": "ePing — GCC vehicles (ICS 43.020)",
       "is_baseline": false,
       "tracked_count": 30,
-      "new_entries": [
-        {
-          "uid": "113917",
-          "title": "GCC Technical regulation for \"Vehicles - \"eCall\" Emergency calls Technical Requirements\"",
-          "summary": "GCC Technical Regulations for Vehicles - \"eCall\" Emergency calls Technical Requirements, This regulation is concerned with the technical requirements for the emergency call system (eCall) for all passenger vehicles not more than eight seats in addition to the driver's (regardless of the vehicle's weight) and for light-duty vehicles with a weight not exceeding 3500 kg, which are imported or manufactured for registration and licensing in the GCC countries This standard exempted vehicle produced in small series.",
-          "meta": {
-            "Notifying member": "Bahrain, Kingdom of",
-            "Area": "TBT",
-            "Distribution date": "2026-06-02",
-            "Comment deadline": "2026-08-01",
-            "Document symbol(s)": "G/TBT/N/ARE/703, G/TBT/N/BHR/780, G/TBT/N/KWT/764, G/TBT/N/OMN/603, G/TBT/N/QAT/754, G/TBT/N/SAU/1437, G/TBT/N/YEM/351",
-            "Products": "Road vehicles in general (ICS code(s): 43.020)",
-            "Objectives": "Protection of human health or safety (TBT), Quality requirements (TBT), Harmonization (TBT)"
-          },
-          "link": "https://docs.wto.org/imrd/directdoc.asp?DDFDocuments/T/G/TBTN26/ARE703.docx",
-          "extra_link": "https://members.wto.org/crnattachments/2026/TBT/ARE/26_02883_00_e.pdf",
-          "llm_note": "This regulation mandates the implementation of the \"eCall\" emergency call system for all passenger vehicles with up to eight seats plus the driver, and light-duty vehicles up to 3500 kg, intended for registration in GCC countries. It affects the design and manufacturing of these vehicles by requiring the integration of specific emergency communication technology. The impact is considered high for manufacturers and importers as it necessitates significant product redesign and compliance testing for a broad range of vehicles."
-        },
-        {
-          "uid": "113918",
-          "title": "GCC Technical regulation for \"Vehicles - \"eCall\" Emergency calls Technical Requirements\"",
-          "summary": "GCC Technical Regulations for Vehicles - \"eCall\" Emergency calls Technical Requirements, This regulation is concerned with the technical requirements for the emergency call system (eCall) for all passenger vehicles not more than eight seats in addition to the driver's (regardless of the vehicle's weight) and for light-duty vehicles with a weight not exceeding 3500 kg, which are imported or manufactured for registration and licensing in the GCC countries This standard exempted vehicle produced in small series.",
-          "meta": {
-            "Notifying member": "Kuwait, the State of",
-            "Area": "TBT",
-            "Distribution date": "2026-06-02",
-            "Comment deadline": "2026-08-01",
-            "Document symbol(s)": "G/TBT/N/ARE/703, G/TBT/N/BHR/780, G/TBT/N/KWT/764, G/TBT/N/OMN/603, G/TBT/N/QAT/754, G/TBT/N/SAU/1437, G/TBT/N/YEM/351",
-            "Products": "Road vehicles in general (ICS code(s): 43.020)",
-            "Objectives": "Protection of human health or safety (TBT), Quality requirements (TBT), Harmonization (TBT)"
-          },
-          "link": "https://docs.wto.org/imrd/directdoc.asp?DDFDocuments/T/G/TBTN26/ARE703.docx",
-          "extra_link": "https://members.wto.org/crnattachments/2026/TBT/ARE/26_02883_00_e.pdf",
-          "llm_note": "This GCC technical regulation mandates the inclusion of eCall emergency call systems in all new passenger vehicles (up to 8 seats plus driver) and light-duty vehicles (up to 3500 kg) imported or manufactured for registration in GCC countries. This directly impacts vehicle manufacturers and importers, requiring the integration of specific safety technology into a broad range of their products. This is a high impact change as it introduces a new mandatory safety feature for a significant portion of the vehicle market in the GCC."
-        }
-      ]
+      "new_entries": []
     }
   ]
 }
