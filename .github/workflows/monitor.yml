@@ -4,7 +4,7 @@ name: Notification Monitor
 # repo, then publishes docs/ to GitHub Pages.
 on:
   schedule:
-    - cron: "0 6 * * *"      # 06:00 UTC daily. Adjust as needed.
+    - cron: "7 4 * * *"      # 04:07 UTC daily. Adjust as needed.
   workflow_dispatch: {}        # lets you run it on demand from the Actions tab
 
 permissions:
