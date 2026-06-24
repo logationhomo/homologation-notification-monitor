@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-06-24 08:19 UTC",
-  "total_new": 3,
+  "generated_at": "2026-06-24 09:29 UTC",
+  "total_new": 4,
   "sites": [
     {
       "id": "eping_gcc_43020",
@@ -23,44 +23,62 @@
           },
           "link": "https://docs.wto.org/imrd/directdoc.asp?DDFDocuments/T/G/TBTN26/ARE703.docx",
           "extra_link": "https://members.wto.org/crnattachments/2026/TBT/ARE/26_02883_00_e.pdf",
-          "llm_note": "This regulation mandates the installation of eCall emergency call systems in all new passenger vehicles (up to 8 seats plus driver) and light-duty vehicles (up to 3500 kg) imported or manufactured for registration in GCC countries. This is highly relevant to the automobile industry as it requires the integration of new hardware and software systems into a broad range of vehicles, necessitating significant design, testing, and certification efforts for manufacturers and importers targeting the GCC market. The exemption for small series production offers limited relief.",
+          "llm_note": "",
+          "severity": "unknown"
+        },
+        {
+          "uid": "88459",
+          "title": "\"Motor vehicle - Technical Requirements for Emergency Calls “eCall”",
+          "summary": "The Saudi Standards, Metrology and Quality (SASO) has prepared draft of the updated standard  SASO 2944   , for \"Motor vehicle - Technical Requirements for Emergency Calls “eCall” which concerned with development of technical requirements for emergency calls system in the motor vehicle, based on relevant International and National Foreign Standards and other references. This standard is concerned with the Emergency calls and Connectivity Technical Requirements for new light duty vehicle (LDVs) imported to KSA.The major changes related to this standard are : - Including the 4G requirements and references --  Exempting the  vehicles produced in small series with an aggregated volume of less than 75 vehicles annually to be equipped with an eCall in- vehicle system.- Postpone the application date of the standard to be Starting from 01/01/2027. (The  proposed enforcement date  of the standard SASO 2944, based on  calendar year )",
+          "meta": {
+            "Notifying member": "Saudi Arabia, Kingdom of",
+            "Area": "TBT",
+            "Distribution date": "2023-11-16",
+            "Comment deadline": "2024-01-15",
+            "Document symbol(s)": "G/TBT/N/SAU/1304/Rev.1",
+            "Products": "Road vehicles in general (ICS code(s): 43.020)",
+            "Objectives": "Prevention of deceptive practices and consumer protection (TBT), Protection of human health or safety (TBT)"
+          },
+          "link": "https://docs.wto.org/imrd/directdoc.asp?DDFDocuments/T/G/TBTN23/SAU1304R1.DOCX",
+          "extra_link": "https://members.wto.org/crnattachments/2023/TBT/SAU/23_13471_00_e.pdf",
+          "llm_note": "This regulatory change updates the technical requirements for eCall systems in new light-duty vehicles imported into Saudi Arabia, specifically incorporating 4G technology requirements. It also introduces an exemption for vehicles produced in small series (under 75 units annually) and postpones the implementation date to January 1, 2027. This is relevant to manufacturers of light-duty vehicles as it mandates specific communication technology for emergency call systems, potentially requiring hardware updates for compliance, though the postponed effective date provides a longer lead time for adaptation.",
+          "severity": "moderate"
+        },
+        {
+          "uid": "67528",
+          "title": "Road vehicles - Flammability of interior materials",
+          "summary": "Thisstandardspecifiesthetechnicalrequirementsandtestproceduresfortheresistanceto burning,of materialsusedinthevehicleoccupantcompartments.Thisstandardappliestopassengercars, multipurposepassengervehicles,trucks,andbuses.",
+          "meta": {
+            "Notifying member": "Saudi Arabia, Kingdom of",
+            "Area": "TBT",
+            "Distribution date": "2020-10-20",
+            "Comment deadline": "2020-12-19",
+            "Document symbol(s)": "G/TBT/N/SAU/1150",
+            "Products": "Ignitability and burning behaviour of materials and products (ICS code(s): 13.220.40); Road vehicles in general (ICS code(s): 43.020)",
+            "Objectives": "Protection of human health or safety (TBT), Harmonization (TBT)"
+          },
+          "link": "https://docs.wto.org/imrd/directdoc.asp?DDFDocuments/T/G/TBTN20/SAU1150.DOCX",
+          "extra_link": "https://members.wto.org/crnattachments/2020/TBT/SAU/20_6251_00_e.pdf",
+          "llm_note": "This standard specifies new technical requirements and test procedures for the burning resistance of interior materials in passenger cars, multipurpose passenger vehicles, trucks, and buses. This is highly relevant to the automobile industry as it directly impacts the selection and testing of all interior materials for a wide range of vehicles. Manufacturers will need to ensure compliance through material changes and re-testing, potentially requiring significant redesigns or material sourcing adjustments.",
           "severity": "high"
         },
         {
-          "uid": "113918",
-          "title": "GCC Technical regulation for \"Vehicles - \"eCall\" Emergency calls Technical Requirements\"",
-          "summary": "GCC Technical Regulations for Vehicles - \"eCall\" Emergency calls Technical Requirements, This regulation is concerned with the technical requirements for the emergency call system (eCall) for all passenger vehicles not more than eight seats in addition to the driver's (regardless of the vehicle's weight) and for light-duty vehicles with a weight not exceeding 3500 kg, which are imported or manufactured for registration and licensing in the GCC countries This standard exempted vehicle produced in small series.",
+          "uid": "56190",
+          "title": "Draft Technical Regulation of Modified Vehicles and Limited Production Vehicles",
+          "summary": "This regulation specifies the following: Terms and Definitions, scope, objectives, supplier Obligations, Labeling, Conformity Assessment Procedures, Responsibilities of regulatory authorities, the authorities of market survey Responsibilities, Violations and Penalties, general rules, Transitional rules, Appendix (lists, types)",
           "meta": {
-            "Notifying member": "Kuwait, the State of",
+            "Notifying member": "Saudi Arabia, Kingdom of",
             "Area": "TBT",
-            "Distribution date": "2026-06-02",
-            "Comment deadline": "2026-08-01",
-            "Document symbol(s)": "G/TBT/N/ARE/703, G/TBT/N/BHR/780, G/TBT/N/KWT/764, G/TBT/N/OMN/603, G/TBT/N/QAT/754, G/TBT/N/SAU/1437, G/TBT/N/YEM/351",
-            "Products": "Road vehicles in general (ICS code(s): 43.020)",
-            "Objectives": "Protection of human health or safety (TBT), Quality requirements (TBT), Harmonization (TBT)"
+            "Distribution date": "2018-07-20",
+            "Comment deadline": "2018-09-18",
+            "Document symbol(s)": "G/TBT/N/SAU/1079",
+            "Products": "HS Code: from 870310 to 870390",
+            "Objectives": "Protection of human health or safety (TBT)"
           },
-          "link": "https://docs.wto.org/imrd/directdoc.asp?DDFDocuments/T/G/TBTN26/ARE703.docx",
-          "extra_link": "https://members.wto.org/crnattachments/2026/TBT/ARE/26_02883_00_e.pdf",
-          "llm_note": "This regulation mandates the implementation of eCall emergency call systems for all passenger vehicles (up to 8 seats plus driver) and light-duty vehicles (up to 3500 kg) imported or manufactured for registration in GCC countries. This is highly relevant to the automobile industry as it requires the integration of new hardware and software systems into a broad range of vehicles, necessitating design changes, testing, and certification processes for compliance. The impact is significant due to the broad scope and the requirement for new safety-critical systems.",
-          "severity": "high"
-        },
-        {
-          "uid": "113919",
-          "title": "GCC Technical regulation for \"Vehicles - \"eCall\" Emergency calls Technical Requirements\"",
-          "summary": "GCC Technical Regulations for Vehicles - \"eCall\" Emergency calls Technical Requirements, This regulation is concerned with the technical requirements for the emergency call system (eCall) for all passenger vehicles not more than eight seats in addition to the driver's (regardless of the vehicle's weight) and for light-duty vehicles with a weight not exceeding 3500 kg, which are imported or manufactured for registration and licensing in the GCC countries This standard exempted vehicle produced in small series.",
-          "meta": {
-            "Notifying member": "Oman",
-            "Area": "TBT",
-            "Distribution date": "2026-06-02",
-            "Comment deadline": "2026-08-01",
-            "Document symbol(s)": "G/TBT/N/ARE/703, G/TBT/N/BHR/780, G/TBT/N/KWT/764, G/TBT/N/OMN/603, G/TBT/N/QAT/754, G/TBT/N/SAU/1437, G/TBT/N/YEM/351",
-            "Products": "Road vehicles in general (ICS code(s): 43.020)",
-            "Objectives": "Protection of human health or safety (TBT), Quality requirements (TBT), Harmonization (TBT)"
-          },
-          "link": "https://docs.wto.org/imrd/directdoc.asp?DDFDocuments/T/G/TBTN26/ARE703.docx",
-          "extra_link": "https://members.wto.org/crnattachments/2026/TBT/ARE/26_02883_00_e.pdf",
-          "llm_note": "This regulation mandates the implementation of eCall emergency call systems for all passenger vehicles (up to 8 seats plus driver) and light-duty vehicles (up to 3500 kg) imported or manufactured for registration in GCC countries. This is highly relevant to the automobile industry as it requires the integration of new hardware and software systems into a broad range of vehicles, necessitating design changes, testing, and certification processes. The impact is significant due to the broad scope and the requirement for new safety-critical systems.",
-          "severity": "high"
+          "link": "https://docs.wto.org/imrd/directdoc.asp?DDFDocuments/T/G/TBTN18/SAU1079.DOCX",
+          "extra_link": "https://members.wto.org/crnattachments/2018/TBT/SAU/18_3825_00_x.pdf",
+          "llm_note": "",
+          "severity": "unknown"
         }
       ]
     }
