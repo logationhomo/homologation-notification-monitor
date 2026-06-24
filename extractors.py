@@ -1,29 +1,9 @@
-"""
-extractors.py — normalise raw fetched records into a uniform internal shape.
-
-Every site, no matter how it's fetched, gets reduced to a list of "entries"
-with the SAME keys, so the diff engine and report template never need to know
-site-specific field names. To add a site with a different payload shape, write
-a new extractor function and register it in EXTRACTORS.
-
-Uniform entry shape (the contract the rest of the app relies on):
-{
-    "uid":        str,   # stable unique id used for change detection
-    "title":      str,   # human-readable headline
-    "summary":    str,   # short description (plain text)
-    "meta":       dict,  # display fields: country, date, deadline, etc.
-    "link":       str,   # primary "more information" URL
-    "extra_link": str,   # optional secondary URL (e.g. direct PDF), or ""
-    "llm_input":  str,   # condensed text fed to the LLM for a relevance note
-}
-"""
-
+"""extractors.py — normalise raw fetched records into a uniform internal shape."""
 import re
 import html
 
 
 def _strip_html(text):
-    """Remove tags and unescape entities. ePing gives <p>..</p> wrapped text."""
     if not text:
         return ""
     text = re.sub(r"<[^>]+>", " ", text)
@@ -32,21 +12,10 @@ def _strip_html(text):
 
 
 def extract_eping(raw_items, site):
-    """
-    Turn raw ePing API items into uniform entries.
-
-    - uid: the API's own "id" (clean primary key; better than the messy
-      comma-joined documentSymbol).
-    - link: linkToNotification (the WTO document landing page).
-    - extra_link: notifiedDocumentLink (direct PDF) when present.
-    - prefers the *Plain fields the API already provides, falling back to
-      stripping HTML from the rich fields if a Plain variant is missing.
-    """
     entries = []
     for item in raw_items:
         uid = str(item.get("id") or "").strip()
         if not uid:
-            # Without a stable id we can't track changes reliably; skip.
             continue
 
         title = item.get("titlePlain") or _strip_html(item.get("title"))
@@ -73,7 +42,6 @@ def extract_eping(raw_items, site):
         link = (item.get("linkToNotification") or "").strip()
         extra_link = (item.get("notifiedDocumentLink") or "").strip()
 
-        # Condensed, clean text block for the LLM relevance note.
         llm_input = (
             f"Title: {title}\n"
             f"Notifying member: {meta['Notifying member']}\n"
@@ -97,7 +65,6 @@ def extract_eping(raw_items, site):
 
 
 def _date_only(iso_str):
-    """'2026-06-02T00:00:00+00:00' -> '2026-06-02'. Safe on None/garbage."""
     if not iso_str:
         return ""
     return str(iso_str)[:10]
