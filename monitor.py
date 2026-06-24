@@ -2,21 +2,14 @@
 """
 monitor.py — main engine.
 
-Run:  python monitor.py
 Flow per run:
   1. Load config (sites.json) and prior state (state/state.json).
   2. For each site: fetch -> extract -> diff against stored uids -> new entries.
-  3. (Optional) Gemini relevance note per new entry.
+  3. (Optional) Gemini relevance note + structured severity per new entry.
   4. Render docs/report.html (and docs/report_data.json).
   5. Save updated state (capped to track_limit, newest-first).
 
 First run for a site = baseline: record current uids, flag nothing as "new".
-
-Environment:
-  GEMINI_API_KEY   optional; enables relevance notes
-  GEMINI_MODEL     optional; defaults to a free-tier Flash model
-  STATE_PATH       optional; override state file location
-  REPORT_PATH      optional; override report output location
 """
 
 import os
@@ -36,6 +29,9 @@ DEFAULT_SITES = os.path.join(HERE, "sites.json")
 DEFAULT_STATE = os.environ.get("STATE_PATH", os.path.join(HERE, "state", "state.json"))
 DEFAULT_REPORT = os.environ.get("REPORT_PATH", os.path.join(HERE, "docs", "report.html"))
 
+# Default severity when the LLM is disabled or produced nothing usable.
+DEFAULT_SEVERITY = "unknown"
+
 
 def load_json(path, default):
     if not os.path.exists(path):
@@ -50,17 +46,25 @@ def save_json(path, obj):
         json.dump(obj, f, ensure_ascii=False, indent=2)
 
 
+def _apply_summary(entry, use_llm):
+    """Populate entry['llm_note'] and entry['severity'] from the summarizer,
+    or set neutral defaults. Centralised so every code path stays consistent."""
+    if use_llm:
+        result = summarizer.summarize(entry["llm_input"])
+        entry["llm_note"] = result.get("note", "")
+        entry["severity"] = result.get("severity", DEFAULT_SEVERITY) or DEFAULT_SEVERITY
+    else:
+        entry["llm_note"] = ""
+        entry["severity"] = DEFAULT_SEVERITY
+
+
 def process_site(site, prior_state, use_llm):
-    """
-    Returns a dict describing this site's results for the report, plus the
-    updated per-site state to persist.
-    """
     fetcher = fetchers.get_fetcher(site["fetcher"])
     extractor = extractors.get_extractor(site["fetcher"])
     track_limit = site.get("track_limit", 30)
 
     raw = fetcher(site)
-    entries = extractor(raw, site)            # uniform shape, newest-first
+    entries = extractor(raw, site)
     entries = entries[:track_limit]
 
     current_uids = [e["uid"] for e in entries]
@@ -69,21 +73,14 @@ def process_site(site, prior_state, use_llm):
     seen_uids = set(prior.get("uids", [])) if prior else set()
 
     if is_baseline:
-        new_entries = []                      # don't flag everything on first run
+        new_entries = []
     else:
         new_entries = [e for e in entries if e["uid"] not in seen_uids]
 
-    # Optional LLM relevance note (only for genuinely new entries).
-    if use_llm and new_entries:
-        for e in new_entries:
-            e["llm_note"] = summarizer.summarize(e["llm_input"])
-    else:
-        for e in new_entries:
-            e["llm_note"] = ""
+    # Relevance note + structured severity, only for genuinely new entries.
+    for e in new_entries:
+        _apply_summary(e, use_llm)
 
-    # New state: union of current uids and what we'd seen, capped & newest-first.
-    # Current uids are already newest-first from the API; keep their order,
-    # then top up with previously-seen ones not in the current page.
     merged = current_uids + [u for u in prior.get("uids", []) if u not in set(current_uids)] if prior else current_uids
     merged = merged[:max(track_limit, len(current_uids))]
 
@@ -119,7 +116,6 @@ def render_report(site_reports, report_path):
     with open(report_path, "w", encoding="utf-8") as f:
         f.write(html)
 
-    # Machine-readable companion file (handy for other tools / debugging).
     data_path = os.path.join(os.path.dirname(report_path), "report_data.json")
     save_json(data_path, {
         "generated_at": generated_at,
@@ -129,8 +125,9 @@ def render_report(site_reports, report_path):
                 "id": s["id"], "name": s["name"], "is_baseline": s["is_baseline"],
                 "tracked_count": s["tracked_count"],
                 "new_entries": [
-                    {k: e[k] for k in ("uid", "title", "summary", "meta",
-                                       "link", "extra_link", "llm_note")}
+                    {k: e.get(k) for k in ("uid", "title", "summary", "meta",
+                                           "link", "extra_link", "llm_note",
+                                           "severity")}
                     for e in s["new_entries"]
                 ],
             } for s in site_reports
@@ -161,9 +158,6 @@ def main():
         print(f"  Using Gemini model: {summarizer.DEFAULT_MODEL} "
               f"(override with GEMINI_MODEL)")
 
-    # On-demand end-to-end Gemini check: fetch one entry per site and summarize
-    # it directly, bypassing the new-entry gate. This makes a REAL API call so
-    # it will appear in AI Studio, and prints the result or the failure reason.
     if args.force_llm_test:
         if not summarizer.is_enabled():
             print("force-llm-test: GEMINI_API_KEY not set; nothing to test.")
@@ -176,8 +170,12 @@ def main():
                 if not entries:
                     print(f"  [{site['id']}] no entries fetched to test.")
                     continue
-                note = summarizer.summarize(entries[0]["llm_input"])
-                status = f"note={note!r}" if note else "EMPTY (see [summarizer] log above)"
+                result = summarizer.summarize(entries[0]["llm_input"])
+                if result.get("note"):
+                    status = (f"severity={result.get('severity')!r} "
+                              f"note={result.get('note')[:80]!r}")
+                else:
+                    status = "EMPTY (see [summarizer] log above)"
                 print(f"  [{site['id']}] forced summary -> {status}")
             except Exception as ex:
                 print(f"  [{site['id']}] force-llm-test error: {ex}", file=sys.stderr)
@@ -198,7 +196,6 @@ def main():
         except Exception as e:
             had_error = True
             print(f"  [{site['id']}] ERROR: {e}", file=sys.stderr)
-            # Keep prior state for this site; show an error card in the report.
             site_reports.append({
                 "id": site["id"], "name": site["name"],
                 "description": site.get("description", "") + "  (fetch failed this run)",
@@ -210,7 +207,6 @@ def main():
 
     print(f"Done. {total_new} new item(s). "
           f"Report: {args.report} | State: {args.state}")
-    # Non-zero exit on hard errors so CI surfaces them, but report is still written.
     sys.exit(1 if had_error else 0)
 
 
