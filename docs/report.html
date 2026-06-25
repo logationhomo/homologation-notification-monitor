@@ -7,9 +7,9 @@
 <style>
   /* Real report — master-detail (v3.2 UI), data-driven.
      Thin shell: fetches report_data.json; JS renders list + detail.
-     An adapter maps the pipeline schema (entry.meta dict, new-only
-     entries) to the UI shape. Severity from the structured LLM field;
-     "unknown" renders as neutral grey. */
+     An adapter maps the pipeline schema (entry.meta dict, full tracked
+     set each tagged is_new) to the UI shape. Severity from the structured
+     LLM field; "unknown" renders as neutral grey. */
   :root {
     --bg: #f4f5f7; --panel: #ffffff; --ink: #14171d; --muted: #5c6472; --faint: #8a909c;
     --line: #e2e5ea; --line-strong: #cfd4dc; --accent: #1f5fbf; --accent-soft: #e9f0fb; --new: #0a7d33;
@@ -83,14 +83,29 @@
   .listscroll { overflow-y: auto; overscroll-behavior: contain; overflow-anchor: none; flex: 1; min-height: 0; padding: 4px 14px 28px; }
   body.detail-open .listscroll { padding: 4px 10px 28px; }
 
+  /* C2: status banner sits ABOVE the always-present list. */
+  .updatebanner { display: flex; align-items: center; gap: 9px; margin: 8px 4px 4px; padding: 10px 13px; border-radius: var(--radius); font-size: .82rem; border: 1px solid var(--line); background: var(--panel); }
+  .updatebanner.has-new { border-color: var(--new); background: var(--accent-soft); }
+  .updatebanner .bdot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--faint); }
+  .updatebanner.has-new .bdot { background: var(--new); }
+  .updatebanner b { color: var(--ink); font-weight: 680; }
+  .updatebanner .bsince { color: var(--muted); margin-left: auto; font-size: .76rem; }
+
   .source-head { display: flex; align-items: baseline; gap: 8px; padding: 16px 4px 4px; }
   .source-head h2 { font-size: .92rem; margin: 0; font-weight: 680; letter-spacing: -.01em; }
   .source-head .count { font-size: .68rem; color: var(--muted); background: var(--chip); padding: 1px 7px; border-radius: 20px; margin-left: auto; font-weight: 550; }
   .country-label { font-size: .7rem; font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: .04em; padding: 9px 4px 4px; }
+  /* C2: group separators — pinned new items vs the standing tracked set. */
+  .group-label { font-size: .7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; padding: 14px 4px 5px; display: flex; align-items: center; gap: 7px; }
+  .group-label .gdot { width: 7px; height: 7px; border-radius: 50%; background: var(--new); }
+  .group-label.standing { color: var(--faint); border-top: 1px solid var(--line); margin-top: 8px; padding-top: 12px; }
 
   .row { display: grid; grid-template-columns: 4px 1fr; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 5px; cursor: pointer; overflow: hidden; transition: border-color .1s, background .1s; }
   .row:hover { border-color: var(--line-strong); }
   .row[aria-selected="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  /* C2: standing (not-new) rows are quietly de-emphasised, not hidden. */
+  .row.standing { background: transparent; }
+  .row.standing .rtitle { font-weight: 550; }
   .row .rrail { width: 4px; }
   .row .rrail.high { background: var(--hi-line); }
   .row .rrail.moderate { background: var(--mod-line); }
@@ -110,6 +125,7 @@
   body.detail-open .row .rtitle { font-size: .86rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .row .rglance { display: flex; gap: 9px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
   .row .rglance .gc { font-size: .72rem; color: var(--faint); }
+  .row .ranalysed { font-size: .68rem; color: var(--faint); font-style: italic; }
   .deadline { font-size: .68rem; font-weight: 650; padding: 1px 7px; border-radius: 20px; white-space: nowrap; }
   .deadline.urgent { background: var(--urgent-bg); color: var(--urgent); }
   .deadline.soon { background: var(--soon-bg); color: var(--soon); }
@@ -144,6 +160,7 @@
   .d-llm { background: var(--low-bg); border-left: 3px solid var(--accent); border-radius: 6px; padding: 16px 18px; margin: 0 0 24px; }
   .d-llm .lab { display: block; font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 7px; }
   .d-llm p { margin: 0; font-size: .96rem; line-height: 1.6; }
+  .d-llm .analysed { display: block; margin-top: 10px; font-size: .72rem; color: var(--faint); font-style: italic; }
   .d-llm.muted { border-left-color: var(--faint); }
   .d-llm.muted .lab { color: var(--faint); }
   .d-meta { margin: 0 0 26px; }
@@ -211,8 +228,10 @@
   </div>
 
 <script>
-/* Data load + schema adapter. report_data.json carries ONLY new entries,
-   each with a `meta` dict. We adapt to the flat shape the UI uses. */
+/* Data load + schema adapter. report_data.json now carries the FULL tracked set
+   per site (each entry tagged is_new), so the dashboard is never empty. We adapt
+   to the flat shape the UI uses and respect each entry's real is_new + the date
+   it was analysed by the LLM. */
 const $ = (s, r=document) => r.querySelector(s);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const VALID_SEV = new Set(["high","moderate","low","unknown"]);
@@ -231,14 +250,15 @@ function adaptEntry(e) {
     country: meta["Notifying member"] || "—",
     seen_date: meta["Distribution date"] || "",
     deadline: meta["Comment deadline"] || "",
-    note: e.llm_note || "",
+    note: e.note || e.llm_note || "",
+    analysed: e.summarised_at || "",
     summary: e.summary || "",
     symbols: meta["Document symbol(s)"] || "",
     products: meta["Products"] || "",
     objectives: meta["Objectives"] || "",
     link: e.link || "",
     extra: e.extra_link || "",
-    is_new: true,
+    is_new: !!e.is_new,
   };
 }
 
@@ -257,9 +277,12 @@ function deadlineInfo(iso) {
   return { cls:"calm", label:`due ${esc(iso)}` };
 }
 function firstSentence(t){ if(!t) return ""; const m = t.match(/^.*?[.!?](\s|$)/); return m ? m[0].trim() : t; }
+// Sort newest-first by distribution date; fall back to uid for stability.
+function byNewest(a, b){ const da=a.seen_date||"", db=b.seen_date||""; if(da!==db) return db<da?-1:1; return String(b.uid).localeCompare(String(a.uid)); }
 
 const allCountries = () => { const s=new Set(); DATA.sites.forEach(x=>x.entries.forEach(e=>s.add(e.country))); return [...s].sort(); };
-const totalNew = () => DATA.sites.reduce((n,s)=>n+s.entries.length,0);
+const totalNew = () => DATA.sites.reduce((n,s)=>n+s.entries.filter(e=>e.is_new).length,0);
+const totalTracked = () => DATA.sites.reduce((n,s)=>n+s.entries.length,0);
 
 function entryMatches(e) {
   if (state.sev !== "all" && e.severity !== state.sev) return false;
@@ -268,13 +291,28 @@ function entryMatches(e) {
   return true;
 }
 
+function bannerEl(site) {
+  const b = document.createElement("div");
+  const hasNew = site.new_count > 0;
+  b.className = "updatebanner" + (hasNew ? " has-new" : "");
+  const since = site.last_change ? `<span class="bsince">last change ${esc(site.last_change)}</span>` : "";
+  if (hasNew) {
+    b.innerHTML = `<span class="bdot"></span><span><b>${site.new_count}</b> new since the last check</span>${since}`;
+  } else {
+    const n = site.entries.length;
+    const sinceTxt = site.last_change ? ` since ${esc(site.last_change)}` : "";
+    b.innerHTML = `<span class="bdot"></span><span>Nothing new${sinceTxt} — showing the <b>${n}</b> latest</span>${since}`;
+  }
+  return b;
+}
+
 function renderList() {
   const root = $("#listscroll"); root.innerHTML = "";
   const visibleByUid = new Set();
   let shown = 0;
 
-  if (!DATA.sites.length || totalNew() === 0) {
-    root.innerHTML = `<div class="status">No new notifications since the last check.</div>`;
+  if (!DATA.sites.length || totalTracked() === 0) {
+    root.innerHTML = `<div class="status">No notifications are being tracked yet. The next check will populate this.</div>`;
     $("#resultcount").innerHTML = `<b>0</b> shown`;
     if (state.selected) closeDetail();
     return;
@@ -287,15 +325,31 @@ function renderList() {
     shown += visible.length;
 
     const head = document.createElement("div"); head.className="source-head";
-    head.innerHTML = `<h2>${esc(site.name)}</h2><span class="count">${site.entries.length} new</span>`;
+    const cnt = site.new_count > 0 ? `${site.new_count} new · ${site.entries.length} tracked` : `${site.entries.length} tracked`;
+    head.innerHTML = `<h2>${esc(site.name)}</h2><span class="count">${cnt}</span>`;
     root.appendChild(head);
 
-    const byCountry = {}; visible.forEach(e=>(byCountry[e.country] ||= []).push(e));
-    Object.keys(byCountry).sort().forEach(country => {
-      const lbl = document.createElement("div"); lbl.className="country-label"; lbl.textContent=country;
-      root.appendChild(lbl);
-      byCountry[country].forEach(e => root.appendChild(rowEl(e)));
-    });
+    // Honest status banner above the always-present list.
+    root.appendChild(bannerEl(site));
+
+    // Split visible into NEW (pinned top) and STANDING (the retained set).
+    const news = visible.filter(e=>e.is_new).sort(byNewest);
+    const standing = visible.filter(e=>!e.is_new).sort(byNewest);
+
+    if (news.length) {
+      const gl = document.createElement("div"); gl.className="group-label";
+      gl.innerHTML = `<span class="gdot"></span>New since last check`;
+      root.appendChild(gl);
+      news.forEach(e => root.appendChild(rowEl(e)));
+    }
+    if (standing.length) {
+      if (news.length) {
+        const gl = document.createElement("div"); gl.className="group-label standing";
+        gl.textContent = "Latest tracked notifications";
+        root.appendChild(gl);
+      }
+      standing.forEach(e => root.appendChild(rowEl(e)));
+    }
   });
 
   if (shown === 0) {
@@ -303,7 +357,7 @@ function renderList() {
   } else {
     const note = document.createElement("div");
     note.className = "history-note";
-    note.textContent = "Showing changes since the last check. Older items are not retained here.";
+    note.textContent = "Showing the latest tracked notifications. New or changed items appear at the top; older items roll off as newer ones arrive.";
     root.appendChild(note);
   }
 
@@ -314,7 +368,7 @@ function renderList() {
 
 function rowEl(e) {
   const el = document.createElement("div");
-  el.className = "row"; el.dataset.uid = e.uid; el.setAttribute("role","button");
+  el.className = "row" + (e.is_new ? "" : " standing"); el.dataset.uid = e.uid; el.setAttribute("role","button");
   el.setAttribute("aria-selected", state.selected===e.uid ? "true":"false");
   const dl = deadlineInfo(e.deadline);
   el.innerHTML =
@@ -329,6 +383,7 @@ function rowEl(e) {
        <div class="rglance">
          <span class="gc">${esc(e.country)}</span>
          ${dl ? `<span class="deadline ${dl.cls}">${dl.label}</span>` : ''}
+         ${e.analysed ? `<span class="ranalysed">analysed ${esc(e.analysed)}</span>` : ''}
        </div>
      </div>`;
   el.addEventListener("click", ()=>select(e.uid));
@@ -385,8 +440,9 @@ function renderDetail() {
   if (!state.selected || !INDEX[state.selected]) { root.innerHTML = ""; return; }
   const { entry:e, site } = INDEX[state.selected];
   const dl = deadlineInfo(e.deadline);
+  const analysedLine = e.analysed ? `<span class="analysed">Analysed ${esc(e.analysed)}</span>` : "";
   const noteHtml = e.note
-    ? `<div class="d-llm"><span class="lab">Why it matters</span><p>${esc(e.note)}</p></div>`
+    ? `<div class="d-llm"><span class="lab">Why it matters</span><p>${esc(e.note)}</p>${analysedLine}</div>`
     : (e.summary ? `<div class="d-llm muted"><span class="lab">Summary (no AI note)</span><p>${esc(e.summary)}</p></div>` : "");
   root.innerHTML =
     `<div class="d-eyebrow">
@@ -443,13 +499,17 @@ function applyData(raw) {
     generated_at: raw.generated_at || "",
     sites: (raw.sites || []).map(s => ({
       id: s.id, name: s.name,
-      entries: (s.new_entries || []).map(adaptEntry),
+      new_count: s.new_count != null ? s.new_count : (s.entries || s.new_entries || []).filter(e=>e.is_new).length,
+      last_change: s.last_change || "",
+      // Accept the new `entries` shape; fall back to legacy `new_entries`.
+      entries: (s.entries || s.new_entries || []).map(adaptEntry),
     })),
   };
   INDEX = {};
   DATA.sites.forEach(s => s.entries.forEach(e => { INDEX[e.uid] = { entry:e, site:s }; }));
 
-  $("#subhead").innerHTML = `<b>${totalNew()}</b> new · ${DATA.sites.length} source${DATA.sites.length===1?"":"s"} · ${esc(DATA.generated_at)}`;
+  const nNew = totalNew();
+  $("#subhead").innerHTML = `<b>${nNew}</b> new · ${totalTracked()} tracked · ${DATA.sites.length} source${DATA.sites.length===1?"":"s"} · ${esc(DATA.generated_at)}`;
   const csel = $("#country");
   csel.innerHTML = '<option value="all">All countries</option>';
   allCountries().forEach(c=>{ const o=document.createElement("option"); o.value=c; o.textContent=c; csel.appendChild(o); });
